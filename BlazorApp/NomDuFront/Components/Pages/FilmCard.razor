@@ -1,0 +1,114 @@
+@using NomDuFront.Models
+@using NomDuFront.Services
+@inject AuthService AuthService ;
+
+<div class="film-card">
+    <div class="card">
+        @if (Film != null && !string.IsNullOrEmpty(Film.Poster))
+        {
+            <img src="@Film.Poster" class="card-img-top" alt="@Film.Title">
+        }
+        <div class="card-body">
+            <h5 class="card-title">@(Film?.Title ?? "Sans titre")</h5>
+            <p class="card-text">
+                <strong>Année:</strong> @(Film?.Year ?? "N/A")<br>
+            </p>
+            <button class="btn btn-primary" 
+                    @onclick="HandleAddToDatabase" 
+                    disabled="@isAdding">
+                @if (isAdding)
+                {
+                    <span>Ajout en cours...</span>
+                }
+                else
+                {
+                    <span>Ajouter à la base</span>
+                }
+            </button>
+            <button class="btn btn-primary" 
+                    @onclick="HandleAddToFav" 
+                    disabled="@isAddingFav">
+                @if (isAddingFav)
+                {
+                    <span>Ajout en cours...</span>
+                }
+                else
+                {
+                    <span>Ajouter Favoris</span>
+                }
+            </button>
+        </div>
+    </div>
+</div>
+
+@code {
+    [Parameter]
+    public NomDuFront.Models.Film? Film { get; set; } 
+    private string? userId ;
+
+    [Parameter]
+    public EventCallback<NomDuFront.Models.Film> OnAddToDatabase { get; set; }
+        [Parameter]
+    public EventCallback<NomDuFront.Models.Film> OnAddToFav { get; set; }
+    
+    
+    private bool isAdding = false;
+    private bool isAddingFav = false;
+
+    private bool isAuthenticated = false;
+
+    protected override async Task OnAfterRenderAsync(bool firstRender)
+    {
+        if (firstRender)
+        {
+            isAuthenticated = await AuthService.IsAuthenticated();
+             
+            userId = await AuthService.GetUserIdAsync();
+            Console.WriteLine($"Le nom de user : {userId}");
+            StateHasChanged(); // Notifie Blazor qu'il y a un changement d'état à refléter
+           
+        }
+    }
+
+    private async Task HandleAddToFav()
+    {
+        if (Film == null) return;
+        
+        try
+        {
+            isAddingFav = true;
+            Console.WriteLine($"FilmCard: Tentative d'ajout du film {Film.Title}");
+            await OnAddToFav.InvokeAsync(Film);
+        }
+        catch (Exception ex)
+        {
+            Console.WriteLine($"FilmCard: Erreur lors de l'ajout: {ex.Message}");
+        }
+        finally
+        {
+            isAddingFav = false;
+            StateHasChanged();
+        }
+    }
+    
+    private async Task HandleAddToDatabase()
+    {
+        if (Film == null) return;
+        
+        try
+        {
+            isAdding = true;
+            Console.WriteLine($"FilmCard: Tentative d'ajout du film {Film.Title}");
+            await OnAddToDatabase.InvokeAsync(Film);
+        }
+        catch (Exception ex)
+        {
+            Console.WriteLine($"FilmCard: Erreur lors de l'ajout: {ex.Message}");
+        }
+        finally
+        {
+            isAdding = false;
+            StateHasChanged();
+        }
+    }
+}

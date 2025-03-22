@@ -1,0 +1,79 @@
+@page "/login"
+@rendermode InteractiveServer
+@using NomDuFront.Services ; 
+@using NomDuFront.Models ;
+@inject AuthService AuthService ; 
+@inject NavigationManager Nav
+@inject IJSRuntime _jsRuntime
+<PageTitle>test page</PageTitle>
+
+<h1>Page de connexion</h1>
+
+
+
+    <div>
+        <EditForm FormName="connexion" Model="@u" OnValidSubmit="HandleLogin">
+            <DataAnnotationsValidator />
+            
+            <div class="form-group mb-3">
+                <label class="form-label">Pseudo</label>
+                <InputText @bind-Value="u.Pseudo" class="form-control custom-input" placeholder="Entrez votre pseudo" />
+                <ValidationMessage For="@(() => u.Pseudo)" class="text-danger" />
+            </div>
+            
+            <div class="form-group mb-4">
+                <label class="form-label">Mot de passe</label>
+                <InputText type="password" @bind-Value="u.MotDePasse" class="form-control custom-input" placeholder="Entrez votre mot de passe" />
+                <ValidationMessage For="@(() => u.MotDePasse)" class="text-danger" />
+            </div>
+            
+            <button type="submit" class="btn btn-danger w-100 mb-3">Se connecter</button>
+        </EditForm>
+    </div>
+
+
+
+@code {
+    private User u = new User();
+
+    private async Task HandleLogin()
+    {
+        Console.WriteLine($"Tentative de connexion avec Pseudo: {u.Pseudo}, MotDePasse: {u.MotDePasse}");
+
+        try
+        {
+            u.Role = 0;
+            var (token, role) = await AuthService.Login(u); // Récupérer les deux valeurs
+
+            if (!string.IsNullOrEmpty(token))
+            {
+                await _jsRuntime.InvokeVoidAsync("localStorage.setItem", "pseudo", u.Pseudo);
+                Console.WriteLine($"Connexion réussie, token reçu. Rôle : {role}");
+                AuthService.NotifyAuthStateChanged(); // Déclenche la mise à jour
+
+                
+                // Redirection basée sur le rôle
+                if (role.Equals("1", StringComparison.OrdinalIgnoreCase))
+                {
+                    Nav.NavigateTo("/admin", forceLoad: true);
+                }
+                else
+                {
+                    Nav.NavigateTo("/favoris", forceLoad: true);
+                }
+            }
+            else
+            {
+                Console.WriteLine("Connexion échouée.");
+            }
+        }
+        catch (Exception ex)
+        {
+            Console.Error.WriteLine($"Erreur lors de la connexion: {ex.Message}");
+        }  
+    }
+
+
+
+
+}

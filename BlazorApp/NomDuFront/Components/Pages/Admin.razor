@@ -1,0 +1,419 @@
+@page "/admin"
+@using NomDuFront.Models
+@using NomDuFront.Services
+@inject UserService UserService
+@inject MovieService MovieService
+@inject IJSRuntime JSRuntime
+@inject NavigationManager Nav
+@rendermode InteractiveServer
+
+<PageTitle>Administration</PageTitle>
+
+<div class="container mt-4">
+    <div class="mb-4">
+        <button class="btn btn-primary me-2" @onclick="ShowUsers">Afficher les utilisateurs</button>
+        <button class="btn btn-primary me-2" @onclick="ShowAdmins">Afficher les administrateurs</button>
+        <button class="btn btn-primary" @onclick="ShowFilms">Afficher les films</button>
+    </div>
+
+    @if (showUsers)
+    {
+        <h3>Gestion des utilisateurs</h3>
+        @if (isLoading)
+        {
+            <div class="spinner-border text-primary" role="status">
+                <span class="visually-hidden">Chargement...</span>
+            </div>
+        }
+        else if (errorMessage != null)
+        {
+            <div class="alert alert-danger" role="alert">
+                @errorMessage
+            </div>
+        }
+        else
+        {
+            <table class="table table-striped">
+                <thead>
+                    <tr>
+                        <th>ID</th>
+                        <th>Pseudo</th>
+                        <th>Rôle</th>
+                        <th>Actions</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    @foreach (var user in users)
+                    {
+                        @if (editingUserId == user.Id)
+                        {
+                            <tr>
+                                <td>@user.Id</td>
+                                <td>
+                                    <input type="text" class="form-control" @bind="editedUser.Pseudo" />
+                                </td>
+                                <td>
+                                    <select class="form-control" @bind="editedUser.Role">
+                                        <option value="0">Utilisateur</option>
+                                        <option value="1">Administrateur</option>
+                                    </select>
+                                </td>
+                                <td>
+                                    <button class="btn btn-success me-2" @onclick="SaveUser">Enregistrer</button>
+                                    <button class="btn btn-secondary" @onclick="CancelEdit">Annuler</button>
+                                </td>
+                            </tr>
+                        }
+                        else
+                        {
+                            <tr>
+                                <td>@user.Id</td>
+                                <td>@user.Pseudo</td>
+                                <td>@user.Role</td>
+                                <td>
+                                    <button class="btn btn-primary me-2" @onclick="() => EditUser(user)">Modifier</button>
+                                    <button class="btn btn-danger" @onclick="() => DeleteUser(user.Id)">Supprimer</button>
+                                </td>
+                            </tr>
+                        }
+                    }
+                </tbody>
+            </table>
+        }
+    }
+
+    @if (showAdmins)
+    {
+        <h3>Liste des administrateurs</h3>
+        @if (isLoadingAdmins)
+        {
+            <div class="spinner-border text-primary" role="status">
+                <span class="visually-hidden">Chargement...</span>
+            </div>
+        }
+        else if (adminErrorMessage != null)
+        {
+            <div class="alert alert-danger" role="alert">
+                @adminErrorMessage
+            </div>
+        }
+        else
+        {
+            <table class="table table-striped">
+                <thead>
+                    <tr>
+                        <th>ID</th>
+                        <th>Pseudo</th>
+                        <th>Rôle</th>
+                        <th>Actions</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    @foreach (var admin in adminUsers)
+                    {
+                        @if (editingUserId == admin.Id)
+                        {
+                            <tr>
+                                <td>@admin.Id</td>
+                                <td>
+                                    <input type="text" class="form-control" @bind="editedUser.Pseudo" />
+                                </td>
+                                <td>
+                                    <select class="form-control" @bind="editedUser.Role">
+                                        <option value="0">Utilisateur</option>
+                                        <option value="1">Administrateur</option>
+                                    </select>
+                                </td>
+                                <td>
+                                    <button class="btn btn-success me-2" @onclick="SaveUser">Enregistrer</button>
+                                    <button class="btn btn-secondary" @onclick="CancelEdit">Annuler</button>
+                                </td>
+                            </tr>
+                        }
+                        else
+                        {
+                            <tr>
+                                <td>@admin.Id</td>
+                                <td>@admin.Pseudo</td>
+                                <td>@admin.Role</td>
+                                <td>
+                                    <button class="btn btn-primary me-2" @onclick="() => EditUser(admin)">Modifier</button>
+                                    <button class="btn btn-danger" @onclick="() => DeleteUser(admin.Id)">Supprimer</button>
+                                </td>
+                            </tr>
+                        }
+                    }
+                </tbody>
+            </table>
+        }
+    }
+
+    @if (showFilms)
+    {
+        <h3>Gestion des films</h3>
+        @if (isLoadingFilms)
+        {
+            <div class="spinner-border text-primary" role="status">
+                <span class="visually-hidden">Chargement...</span>
+            </div>
+        }
+        else if (filmErrorMessage != null)
+        {
+            <div class="alert alert-danger" role="alert">
+                @filmErrorMessage
+            </div>
+        }
+        else
+        {
+            <table class="table table-striped">
+                <thead>
+                    <tr>
+                        <th>ID</th>
+                        <th>Titre</th>
+                        <th>Année</th>
+                        <th>IMDB ID</th>
+                        <th>Type</th>
+                        <th>Poster</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    @foreach (var film in films)
+                    {
+                        <tr>
+                            <td>@film.Id</td>
+                            <td>@film.Title</td>
+                            <td>@film.Year</td>
+                            <td>@film.imdbID</td>
+                            <td>@film.Type</td>
+                            <td>
+                                @if (!string.IsNullOrEmpty(film.Poster))
+                                {
+                                    <img src="@film.Poster" alt="@film.Title" style="max-height: 50px;" />
+                                }
+                                else
+                                {
+                                    <span>Aucune affiche</span>
+                                }
+                            </td>
+                        </tr>
+                    }
+                </tbody>
+            </table>
+        }
+    }
+</div>
+
+@code {
+    private List<User> users = new();
+    private List<User> adminUsers = new();
+    private List<Models.Film> films = new();
+    private bool isLoading = true;
+    private bool isLoadingAdmins = true;
+    private bool isLoadingFilms = true;
+    private string? errorMessage;
+    private string? adminErrorMessage;
+    private string? filmErrorMessage;
+    private bool showUsers = true;
+    private bool showAdmins = false;
+    private bool showFilms = false;
+    private int? editingUserId;
+    private User editedUser = new();
+
+    protected override async Task OnAfterRenderAsync(bool firstRender)
+    {
+        if (firstRender)
+        {
+            await CheckAdminRole();
+            await LoadUsers();
+        }
+    }
+
+    private async Task LoadUsers()
+    {
+        try
+        {
+            isLoading = true;
+            errorMessage = null;
+            users = await UserService.GetAllUsers();
+
+            if (users.Count == 0)
+            {
+                errorMessage = "Aucun utilisateur trouvé.";
+            }
+        }
+        catch (Exception ex)
+        {
+            errorMessage = ex.Message;
+            Console.Error.WriteLine($"Erreur: {ex.Message}");
+        }
+        finally
+        {
+            isLoading = false;
+            StateHasChanged();
+        }
+    }
+
+    private async Task LoadAdminUsers()
+    {
+        try
+        {
+            isLoadingAdmins = true;
+            adminErrorMessage = null;
+            adminUsers = await UserService.GetAdminUsers();
+
+            if (adminUsers.Count == 0)
+            {
+                adminErrorMessage = "Aucun administrateur trouvé.";
+            }
+        }
+        catch (Exception ex)
+        {
+            adminErrorMessage = ex.Message;
+            Console.Error.WriteLine($"Erreur: {ex.Message}");
+        }
+        finally
+        {
+            isLoadingAdmins = false;
+            StateHasChanged();
+        }
+    }
+
+    private async Task LoadFilms()
+    {
+        try
+        {
+            isLoadingFilms = true;
+            filmErrorMessage = null;
+            films = await MovieService.GetAllFilms();
+
+            if (films.Count == 0)
+            {
+                filmErrorMessage = "Aucun film trouvé.";
+            }
+        }
+        catch (Exception ex)
+        {
+            filmErrorMessage = ex.Message;
+            Console.Error.WriteLine($"Erreur: {ex.Message}");
+        }
+        finally
+        {
+            isLoadingFilms = false;
+            StateHasChanged();
+        }
+    }
+
+    private async Task CheckAdminRole()
+    {
+        var role = await JSRuntime.InvokeAsync<string>("localStorage.getItem", "userRole");
+
+        if (role?.ToLower() != "1")
+        {
+            Nav.NavigateTo("/unauthorized");
+        }
+    }
+
+    private void EditUser(User user)
+    {
+        editingUserId = user.Id;
+        editedUser = new User
+        {
+            Id = user.Id,
+            Pseudo = user.Pseudo,
+            Role = user.Role
+        };
+    }
+
+    private void CancelEdit()
+    {
+        editingUserId = null;
+        editedUser = new User();
+    }
+
+    private async Task SaveUser()
+    {
+        try
+        {
+            var success = await UserService.UpdateUser(editedUser);
+            if (success)
+            {
+                await LoadUsers();
+                if (showAdmins)
+                {
+                    await LoadAdminUsers();
+                }
+                editingUserId = null;
+                editedUser = new User();
+            }
+            else
+            {
+                errorMessage = "Erreur lors de la mise à jour de l'utilisateur.";
+            }
+        }
+        catch (Exception ex)
+        {
+            errorMessage = ex.Message;
+            Console.Error.WriteLine($"Erreur lors de la mise à jour : {ex.Message}");
+        }
+    }
+
+    private async Task DeleteUser(int userId)
+    {
+        try
+        {
+            var isDeleted = await UserService.DeleteUser(userId);
+
+            if (isDeleted)
+            {
+                Console.WriteLine("Utilisateur supprimé avec succès.");
+                await LoadUsers();
+                if (showAdmins)
+                {
+                    await LoadAdminUsers();
+                }
+            }
+            else
+            {
+                errorMessage = "Erreur lors de la suppression de l'utilisateur.";
+            }
+        }
+        catch (Exception ex)
+        {
+            errorMessage = ex.Message;
+            Console.Error.WriteLine($"Erreur lors de la suppression de l'utilisateur : {ex.Message}");
+        }
+    }
+
+    private async Task ShowUsers()
+    {
+        showUsers = true;
+        showAdmins = false;
+        showFilms = false;
+        if (users.Count == 0)
+        {
+            await LoadUsers();
+        }
+    }
+
+    private async Task ShowAdmins()
+    {
+        showUsers = false;
+        showAdmins = true;
+        showFilms = false;
+        if (adminUsers.Count == 0)
+        {
+            await LoadAdminUsers();
+        }
+    }
+
+    private async Task ShowFilms()
+    {
+        showUsers = false;
+        showAdmins = false;
+        showFilms = true;
+        if (films.Count == 0)
+        {
+            await LoadFilms();
+        }
+    }
+}

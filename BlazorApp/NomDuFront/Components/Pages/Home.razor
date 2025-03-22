@@ -1,0 +1,309 @@
+﻿@page "/"
+@using NomDuFront.Services
+@using NomDuFront.Models
+@inject UserService UserService
+@inject IJSRuntime JSRuntime
+@inject AuthService AuthService
+@inject NavigationManager NavigationManager
+@rendermode InteractiveServer
+
+<PageTitle>Home</PageTitle>
+
+@if (isLoading)
+{
+    <div class="spinner-border" role="status">
+        <span class="visually-hidden">Chargement...</span>
+    </div>
+}
+else
+{
+    <AuthorizeView>
+        <Authorized>
+            <div class="container mt-4">
+                <h1>Hello, @currentUser?.Pseudo!</h1>
+                <p>Welcome to your new app.</p>
+
+                @if (currentUser != null)
+                {
+                    <div class="mt-4">
+                        <div class="card mb-4">
+                            <div class="card-header">
+                                <h3>Mon Profil</h3>
+                            </div>
+                            <div class="card-body">
+                                <p><strong>Pseudo:</strong> @currentUser.Pseudo</p>
+                                <p><strong>Rôle:</strong> @currentUser.Role</p>
+                                <button class="btn btn-primary" @onclick="() => ShowEditForm(currentUser)">
+                                    Modifier mes informations
+                                </button>
+                            </div>
+                        </div>
+
+                        @if (currentUser.Role == (Role)1)
+                        {
+                            <div class="mt-4">
+                                <h3>Gestion des Utilisateurs</h3>
+                                @if (users != null && users.Any())
+                                {
+                                    <div class="table-responsive">
+                                        <table class="table table-striped">
+                                            <thead>
+                                                <tr>
+                                                    <th>Pseudo</th>
+                                                    <th>Rôle</th>
+                                                    <th>Actions</th>
+                                                </tr>
+                                            </thead>
+                                            <tbody>
+                                                @foreach (var user in users)
+                                                {
+                                                    <tr>
+                                                        <td>@user.Pseudo</td>
+                                                        <td>@user.Role</td>
+                                                        <td>
+                                                            <button class="btn btn-secondary btn-sm" @onclick="() => ShowEditForm(user)">
+                                                                Modifier
+                                                            </button>
+                                                            @if (user.Id != currentUser.Id)
+                                                            {
+                                                                <button class="btn btn-danger btn-sm ms-2" @onclick="() => DeleteUser(user.Id)">
+                                                                    Supprimer
+                                                                </button>
+                                                            }
+                                                        </td>
+                                                    </tr>
+                                                }
+                                            </tbody>
+                                        </table>
+                                    </div>
+                                }
+                                else
+                                {
+                                    <div class="alert alert-info">
+                                        Aucun autre utilisateur trouvé.
+                                    </div>
+                                }
+                            </div>
+                        }
+
+                        @if (selectedUser != null && showEditForm)
+                        {
+                            <div class="modal" tabindex="-1" style="display: block; background-color: rgba(0,0,0,0.5)">
+                                <div class="modal-dialog">
+                                    <div class="modal-content">
+                                        <div class="modal-header">
+                                            <h5 class="modal-title">
+                                                @if (selectedUser.Id == currentUser.Id)
+                                                {
+                                                    <span>Modifier mon profil</span>
+                                                }
+                                                else
+                                                {
+                                                    <span>Modifier l'utilisateur @selectedUser.Pseudo</span>
+                                                }
+                                            </h5>
+                                            <button type="button" class="btn-close" @onclick="CloseEditForm"></button>
+                                        </div>
+                                        <div class="modal-body">
+                                            <UserEditForm User="selectedUser"
+                                                        OnSaved="HandleUserUpdated"
+                                                        OnCancel="CloseEditForm" />
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        }
+                    </div>
+                }
+            </div>
+        </Authorized>
+        <NotAuthorized>
+            <div class="container mt-4">
+                <div class="alert alert-warning">
+                    Veuillez vous <a href="/login" class="alert-link">connecter</a> pour accéder à votre profil.
+                </div>
+            </div>
+        </NotAuthorized>
+    </AuthorizeView>
+}
+
+@if (!string.IsNullOrEmpty(error))
+{
+    <div class="alert alert-danger mt-3">
+        @error
+    </div>
+}
+
+@code {
+    private List<User>? users;
+    private bool isLoggedIn;
+    private string? userName;
+    private User? currentUser;
+    private bool initialized;
+    private bool isLoading = true;
+    private string error = "";
+    private User? selectedUser;
+    private bool showEditForm = false;
+    protected override async Task OnAfterRenderAsync(bool firstRender)
+    {
+        if (firstRender)
+        {
+            try
+            {
+                // Vérifier l'authentification de l'utilisateur
+                isLoggedIn = await AuthService.IsAuthenticated();
+                
+                if (isLoggedIn)
+                {
+                    userName = await JSRuntime.InvokeAsync<string>("localStorage.getItem", "pseudo");
+                    if (string.IsNullOrEmpty(userName))
+                    {
+                        isLoggedIn = false;
+                        await AuthService.Logout();
+                    }
+                    
+                }
+            }
+            catch (Exception ex)
+            {
+                Console.WriteLine($"Erreur lors de la vérification: {ex.Message}");
+                isLoggedIn = false;
+            }
+            finally
+            {
+                initialized = true;
+                StateHasChanged();
+            }
+        }
+    }
+
+    protected override async Task OnInitializedAsync()
+    {
+        try
+        {
+            var token = await JSRuntime.InvokeAsync<string>("localStorage.getItem", "jwtToken");
+            if (!string.IsNullOrEmpty(token))
+            {
+                await LoadCurrentUser();
+                if (currentUser?.Role == (Role)1)
+                {
+                    await LoadUsers();
+                }
+            }
+            else
+            {
+                NavigationManager.NavigateTo("/login");
+            }
+        }
+        catch (Exception ex)
+        {
+            error = $"Erreur lors de l'initialisation : {ex.Message}";
+        }
+        finally
+        {
+            isLoading = false;
+        }
+    }
+
+    
+
+    private async Task CheckAuthentication()
+    {
+        var token = await JSRuntime.InvokeAsync<string>("localStorage.getItem", "jwtToken");
+        if (string.IsNullOrEmpty(token))
+        {
+            NavigationManager.NavigateTo("/login");
+        }
+    }
+
+    private async Task LoadCurrentUser()
+    {
+        try
+        {
+            var userId = await JSRuntime.InvokeAsync<string>("localStorage.getItem", "userId");
+            if (!string.IsNullOrEmpty(userId) && int.TryParse(userId, out int id))
+            {
+                currentUser = await UserService.GetUserById(id);
+                if (currentUser == null)
+                {
+                    await JSRuntime.InvokeVoidAsync("localStorage.removeItem", "jwtToken");
+                    await JSRuntime.InvokeVoidAsync("localStorage.removeItem", "userId");
+                    NavigationManager.NavigateTo("/login");
+                }
+            }
+        }
+        catch (Exception ex)
+        {
+            error = $"Erreur lors du chargement du profil : {ex.Message}";
+        }
+    }
+
+    private async Task LoadUsers()
+    {
+        if (currentUser?.Role != (Role)1) return;
+
+        try
+        {
+            users = await UserService.GetAllUsers();
+        }
+        catch (Exception ex)
+        {
+            error = $"Erreur lors du chargement des utilisateurs : {ex.Message}";
+        }
+    }
+
+    private async Task DeleteUser(int userId)
+    {
+        if (currentUser?.Role != (Role)1)
+        {
+            error = "Vous n'avez pas les droits nécessaires";
+            return;
+        }
+
+        if (!await JSRuntime.InvokeAsync<bool>("confirm", "Êtes-vous sûr de vouloir supprimer cet utilisateur ?"))
+            return;
+
+        try
+        {
+            if (await UserService.DeleteUser(userId))
+            {
+                await LoadUsers();
+            }
+            else
+            {
+                error = "Erreur lors de la suppression de l'utilisateur.";
+            }
+        }
+        catch (Exception ex)
+        {
+            error = $"Erreur : {ex.Message}";
+        }
+    }
+
+    private void ShowEditForm(User user)
+    {
+        if (user == null) return;
+
+        if (user.Id == currentUser?.Id || currentUser?.Role == (Role)1)
+        {
+            selectedUser = user;
+            showEditForm = true;
+        }
+    }
+
+    private void CloseEditForm()
+    {
+        selectedUser = null;
+        showEditForm = false;
+    }
+
+    private async Task HandleUserUpdated()
+    {
+        await LoadCurrentUser();
+        if (currentUser?.Role == (Role)1)
+        {
+            await LoadUsers();
+        }
+        CloseEditForm();
+    }
+}

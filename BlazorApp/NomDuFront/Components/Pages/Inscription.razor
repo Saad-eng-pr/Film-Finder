@@ -1,0 +1,65 @@
+@page "/register"
+@rendermode InteractiveServer
+@using NomDuFront.Services ; 
+@using NomDuFront.Models ;
+@inject AuthService AuthService ; 
+@inject NavigationManager Nav
+<PageTitle>test page</PageTitle>
+
+<h1>Page d'inscription</h1>
+
+
+
+
+
+    <div>
+        <EditForm FormName="connexion" Model="@u" OnValidSubmit="HandleSignUp">
+            <DataAnnotationsValidator />
+            
+            <div class="form-group mb-3">
+                <label class="form-label">Pseudo</label>
+                <InputText @bind-Value="u.Pseudo" class="form-control custom-input" placeholder="Entrez votre pseudo" />
+                <ValidationMessage For="@(() => u.Pseudo)" class="text-danger" />
+            </div>
+            
+            <div class="form-group mb-4">
+                <label class="form-label">Mot de passe</label>
+                <InputText type="password" @bind-Value="u.MotDePasse" class="form-control custom-input" placeholder="Entrez votre mot de passe" />
+                <ValidationMessage For="@(() => u.MotDePasse)" class="text-danger" />
+            </div>
+            
+            <button type="submit" class="btn btn-danger w-100 mb-3">S'inscrire</button>
+        </EditForm>
+    </div>
+
+
+
+@code {
+    private User u = new User();
+
+    private async Task HandleSignUp()
+    {
+        Console.WriteLine($"Tentative d'inscription avec Pseudo: {u.Pseudo}, MotDePasse: {u.MotDePasse}");
+
+        try
+        {
+                
+                var user = await AuthService.Register(u);
+                if (user != null)
+                {
+                    Console.WriteLine("Inscription réussi");
+                    Nav.NavigateTo("/login");
+                }
+                else
+                {
+                    Console.WriteLine("Inscription échouée");
+                }
+        }
+        catch (Exception ex)
+        {
+            Console.Error.WriteLine($"Erreur lors de l'inscription: {ex.Message}");
+        }  
+    }
+
+
+}

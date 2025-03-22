@@ -1,0 +1,126 @@
+@page "/favoris"
+@using NomDuFront.Services
+@inject FavoriteService FavoriteService
+@inject AuthService AuthService
+@inject NavigationManager Nav
+@inject IJSRuntime JSRuntime
+@rendermode InteractiveServer
+
+<h3>Page des Favoris</h3>
+
+@if (!initialized)
+{
+    <p>Chargement...</p>
+}
+else
+{
+    @if (isLoggedIn)
+    {
+        <p>Bienvenue, @userName ! Vous êtes connecté.</p>
+        <button class="btn btn-danger" @onclick="Logout">Se déconnecter</button>
+
+        <div class="mt-4">
+            <h4>Mes Films Favoris</h4>
+            @if (favoriteMovies == null || !favoriteMovies.Any())
+            {
+                <p>Aucun film dans vos favoris.</p>
+            }
+            else
+            {
+               
+                    <div class="film-grid">
+                    @foreach (var film in favoriteMovies)
+                    {
+                        <FilmCard Film="film" />
+                    }
+                    </div>
+               
+            }
+        </div>
+    }
+    else
+    {
+        <p>Vous n'êtes pas connecté. <a href="/login">Se connecter</a></p>
+    }
+}
+
+@code {
+    private List<Models.Film> favoriteMovies;
+    private bool isLoggedIn;
+    private string? userName;
+    private bool initialized;
+
+    protected override async Task OnAfterRenderAsync(bool firstRender)
+    {
+        if (firstRender)
+        {
+            try
+            {
+                // Vérifier l'authentification de l'utilisateur
+                isLoggedIn = await AuthService.IsAuthenticated();
+                
+                if (isLoggedIn)
+                {
+                    userName = await JSRuntime.InvokeAsync<string>("localStorage.getItem", "pseudo");
+                    if (string.IsNullOrEmpty(userName))
+                    {
+                        isLoggedIn = false;
+                        await AuthService.Logout();
+                    }
+                    else
+                    {
+                        // Récupérer les films favoris de l'utilisateur
+                        await LoadFavoriteMovies();
+                    }
+                }
+            }
+            catch (Exception ex)
+            {
+                Console.WriteLine($"Erreur lors de la vérification: {ex.Message}");
+                isLoggedIn = false;
+            }
+            finally
+            {
+                initialized = true;
+                StateHasChanged();
+            }
+        }
+    }
+
+    private async Task LoadFavoriteMovies()
+    {
+        try
+        {
+            // Assumes you have a way to get the user ID (userName or another identifier)
+            string userIdString = await AuthService.GetUserIdAsync();  // Remplace par l'ID réel de l'utilisateur
+            var success = int.TryParse(userIdString, out var userId);
+
+            var filmIds = await FavoriteService.GetFavoriteMovieIds(userId);
+
+            if (filmIds != null && filmIds.Any())
+            {
+                // Charger les détails des films à partir des IDs
+                favoriteMovies = await FavoriteService.GetFavoriteMoviesByIds(filmIds);
+            }
+        }
+        catch (Exception ex)
+        {
+            Console.WriteLine($"Erreur lors du chargement des favoris: {ex.Message}");
+        }
+    }
+
+    private async Task Logout()
+    {
+        try
+        {
+            await AuthService.Logout();
+            await JSRuntime.InvokeVoidAsync("localStorage.removeItem", "pseudo");
+            isLoggedIn = false;
+            Nav.NavigateTo("/login", true);
+        }
+        catch (Exception ex)
+        {
+            Console.WriteLine($"Erreur lors de la déconnexion: {ex.Message}");
+        }
+    }
+}

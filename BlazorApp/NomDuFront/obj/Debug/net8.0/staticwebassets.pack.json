@@ -1,0 +1,45 @@
+{
+  "Files": [
+    {
+      "Id": "C:\\Users\\saada\\Documents\\Prog\\Projets\\FilmFinder\\BlazorApp\\NomDuFront\\obj\\Debug\\net8.0\\scopedcss\\projectbundle\\NomDuFront.bundle.scp.css",
+      "PackagePath": "staticwebassets\\NomDuFront.8ehc8nz9ao.bundle.scp.css"
+    },
+    {
+      "Id": "C:\\Users\\saada\\Documents\\Prog\\Projets\\FilmFinder\\BlazorApp\\NomDuFront\\wwwroot\\app.css",
+      "PackagePath": "staticwebassets\\app.css"
+    },
+    {
+      "Id": "C:\\Users\\saada\\Documents\\Prog\\Projets\\FilmFinder\\BlazorApp\\NomDuFront\\wwwroot\\bootstrap\\bootstrap.min.css",
+      "PackagePath": "staticwebassets\\bootstrap\\bootstrap.min.css"
+    },
+    {
+      "Id": "C:\\Users\\saada\\Documents\\Prog\\Projets\\FilmFinder\\BlazorApp\\NomDuFront\\wwwroot\\bootstrap\\bootstrap.min.css.map",
+      "PackagePath": "staticwebassets\\bootstrap\\bootstrap.min.css.map"
+    },
+    {
+      "Id": "C:\\Users\\saada\\Documents\\Prog\\Projets\\FilmFinder\\BlazorApp\\NomDuFront\\wwwroot\\favicon.png",
+      "PackagePath": "staticwebassets\\favicon.png"
+    },
+    {
+      "Id": "obj\\Debug\\net8.0\\staticwebassets\\msbuild.NomDuFront.Microsoft.AspNetCore.StaticWebAssetEndpoints.props",
+      "PackagePath": "build\\Microsoft.AspNetCore.StaticWebAssetEndpoints.props"
+    },
+    {
+      "Id": "obj\\Debug\\net8.0\\staticwebassets\\msbuild.NomDuFront.Microsoft.AspNetCore.StaticWebAssets.props",
+      "PackagePath": "build\\Microsoft.AspNetCore.StaticWebAssets.props"
+    },
+    {
+      "Id": "obj\\Debug\\net8.0\\staticwebassets\\msbuild.build.NomDuFront.props",
+      "PackagePath": "build\\NomDuFront.props"
+    },
+    {
+      "Id": "obj\\Debug\\net8.0\\staticwebassets\\msbuild.buildMultiTargeting.NomDuFront.props",
+      "PackagePath": "buildMultiTargeting\\NomDuFront.props"
+    },
+    {
+      "Id": "obj\\Debug\\net8.0\\staticwebassets\\msbuild.buildTransitive.NomDuFront.props",
+      "PackagePath": "buildTransitive\\NomDuFront.props"
+    }
+  ],
+  "ElementsToRemove": []
+}

@@ -1,0 +1,201 @@
+@page "/film"
+@rendermode InteractiveServer
+@using NomDuFront.Services
+@using NomDuFront.Models
+@inject MovieService MovieService
+@inject AuthService AuthService
+@inject FavoriteService FavoriteService
+@inject NavigationManager Nav
+
+<h3>Recherche de Film</h3>
+
+<select @bind="searchType">
+    <option value="ById">Rechercher par ID IMDb</option>
+    <option value="ByTitle">Rechercher par Titre</option>
+</select>
+
+<input type="text" @bind="searchTerm" placeholder="Entrez un ID IMDb ou un titre" />
+<button @onclick="SearchFilm">Rechercher</button>
+
+@if (films != null && films.Any())
+{
+    <div class="film-results">
+        @foreach (var film in films)
+        {
+            <FilmCard Film="film" OnAddToDatabase="AddFilmToDatabase" OnAddToFav="AddFilmToFav" />
+        }
+    </div>
+}
+else if (searchAttempted)
+{
+    <div class="alert alert-warning">
+        @(errorMessage ?? "Aucun film trouvé ou erreur dans la recherche.")
+    </div>
+}
+else
+{
+    <h4 class="mt-4">Suggestions de films</h4>
+    <div class="film-grid">
+        @foreach (var randomFilm in randomFilms)
+        {
+            <FilmCard Film="randomFilm" OnAddToDatabase="AddFilmToDatabase" OnAddToFav="AddFilmToFav" />
+        }
+    </div>
+}
+
+@code {
+    private string imdbID = "";
+    private NomDuFront.Models.Film? currentFilm;
+    
+    private List<NomDuFront.Models.Film> suggestedFilms = new();
+    private bool isLoading = false;
+    private bool isAdding = false;
+    private string? addMessage = null;
+    private bool addSuccess = false;
+
+    private string searchTerm = "";
+    private SearchType searchType = SearchType.ById;
+    private List<Models.Film>? films;
+    private bool searchAttempted = false;
+    private string? errorMessage = null;
+    private List<Models.Film> randomFilms = new();
+
+    private readonly List<string> popularImdbIds = new()
+    {
+        "tt0111161", // The Shawshank Redemption
+        "tt0068646", // The Godfather
+        "tt0071562", // The Godfather Part II
+        "tt0468569", // The Dark Knight
+        "tt0050083", // 12 Angry Men
+        "tt0108052", // Schindler's List
+        "tt0167260", // The Lord of the Rings: The Return of the King
+        "tt0110912", // Pulp Fiction
+        "tt0120737", // The Lord of the Rings: The Fellowship of the Ring
+        "tt0137523"  // Fight Club
+    };
+
+    protected override async Task OnInitializedAsync()
+    {
+        await LoadRandomMovies();
+    }
+
+    private async Task LoadRandomMovies()
+    {
+        var random = new Random();
+        var selectedIds = popularImdbIds
+            .OrderBy(x => random.Next())
+            .Take(10)
+            .ToList();
+
+        var tasks = selectedIds.Select(id => MovieService.SearchID(id));
+        var results = await Task.WhenAll(tasks);
+
+        randomFilms = results.Where(f => f != null).SelectMany(f => f).ToList();
+    }
+
+    private async Task SearchFilm()
+    {
+        searchAttempted = true;
+        errorMessage = null;
+
+        try
+        {
+            films = await MovieService.Search(searchTerm, searchType);
+
+            if (films == null || !films.Any())
+            {
+                errorMessage = searchType == SearchType.ById
+                    ? "Aucun film trouvé avec cet ID IMDb."
+                    : "Aucun film trouvé avec ce titre.";
+            }
+        }
+        catch (Exception ex)
+        {
+            errorMessage = $"Une erreur s'est produite lors de la recherche : {ex.Message}";
+            films = null;
+        }
+    }
+
+    private async Task AddFilmToDatabase(NomDuFront.Models.Film film)
+    {   
+        if (film == null) return;
+
+        try
+        {
+            Console.WriteLine($"Début de l'ajout du film : {film.Title}");
+            isAdding = true;
+            addMessage = null;
+            
+            var addedFilm = await MovieService.AddFilm(film);
+
+            if (addedFilm != null)
+            {
+                Console.WriteLine("Film ajouté avec succès !");
+                addMessage = "Film ajouté avec succès !";
+                addSuccess = true;
+                await Task.Delay(2000);
+                Nav.NavigateTo("/film");
+            }
+            else
+            {
+                Console.WriteLine("Échec de l'ajout du film");
+                addMessage = "Échec de l'ajout du film.";
+                addSuccess = false;
+            }
+        }
+        catch (Exception ex)
+        {
+            Console.WriteLine($"Erreur lors de l'ajout : {ex.Message}");
+            addMessage = $"Erreur lors de l'ajout : {ex.Message}";
+            addSuccess = false;
+        }
+        finally
+        {
+            isAdding = false;
+            StateHasChanged();
+        }
+    }
+
+    private async Task AddFilmToFav(NomDuFront.Models.Film film)
+    {   
+        if (film == null) return;
+
+        try
+        {
+            Console.WriteLine($"Début de l'ajout du film : {film.Title}");
+            string userString = await AuthService.GetUserIdAsync() ; 
+            int userId ; 
+            bool isSuccess = int.TryParse(userString, out userId);
+            isAdding = true;
+            addMessage = null;
+            
+            var addedFilm = await FavoriteService.AddFavoris(userId , film );
+
+            if (addedFilm != null)
+            {
+                Console.WriteLine("Film ajouté avec succès aux favoris !");
+                addMessage = "Film ajouté avec succès aux favoris !";
+                addSuccess = true;
+                await Task.Delay(2000);
+                Nav.NavigateTo("/film");
+            }
+            else
+            {
+                Console.WriteLine("Échec de l'ajout aux favoris");
+                addMessage = "Échec de l'ajout aux favoris.";
+                addSuccess = false;
+            }
+        }
+        catch (Exception ex)
+        {
+            Console.WriteLine($"Erreur lors de l'ajout aux favoris : {ex.Message}");
+            addMessage = $"Erreur lors de l'ajout aux favoris : {ex.Message}";
+            addSuccess = false;
+        }
+        finally
+        {
+            isAdding = false;
+            StateHasChanged();
+        }
+    }
+}
